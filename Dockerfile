@@ -7,7 +7,7 @@ COPY resources ./resources
 RUN npm run build
 
 FROM php:8.3-apache-bookworm
-ENV PORT=8080 APP_ENV=production APP_DEBUG=false COMPOSER_ALLOW_SUPERUSER=1
+ENV PORT=8080 APP_ENV=production APP_DEBUG=false LOG_CHANNEL=stderr COMPOSER_ALLOW_SUPERUSER=1
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends git unzip libjpeg62-turbo-dev libpng-dev libwebp-dev libzip-dev \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
@@ -23,7 +23,7 @@ COPY deploy/apache.conf /etc/apache2/sites-available/000-default.conf
 RUN printf '%s\n' 'Listen ${PORT}' > /etc/apache2/ports.conf \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
     && cp deploy/php.ini "$PHP_INI_DIR/conf.d/portfolio.ini" \
-    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache \
+    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && composer dump-autoload --no-dev --optimize --no-interaction \
     && chown -R www-data:www-data /app/storage /app/bootstrap/cache
 EXPOSE 8080

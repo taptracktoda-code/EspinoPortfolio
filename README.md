@@ -68,4 +68,12 @@ MAIL_REPLY_TO_ADDRESS=owner@your-domain.example
 
 Use a verified sending domain with Resend. Railway also supports SMTP on eligible plans. [Railway outbound email](https://docs.railway.com/networking/outbound-networking)
 
+### Recover a Railway deployment returning HTTP 500
+
+If `/up` returns 500 while `/robots.txt` returns 200, check whether the web service can connect to its database. The `/up` route runs a database query. A GitHub deploy builds the app, and `railway config apply` applies the infrastructure settings separately.
+
+1. Open **Variables** on the service that owns the public domain in Railway. Set `DB_CONNECTION=mysql` and `DB_URL=${{MySQL.MYSQL_URL}}`, replacing `MySQL` with the name of the database service in the same environment. If you use the individual `DB_*` variables above, check those references instead and clear any stale `DB_URL` that would override them. Set `LOG_CHANNEL=stderr` and keep `APP_DEBUG=false`. [Railway MySQL connection variables](https://docs.railway.com/databases/mysql#connect)
+2. Confirm that this web service has its existing `APP_KEY`, uses the intended GitHub branch, and has `php artisan migrate --force` as its pre-deploy command and `/up` as its health check. Deploy the staged changes. [Railway pre-deploy commands](https://docs.railway.com/deployments/pre-deploy-command)
+3. Verify that `/up` and `/` return 200. If deployment fails, check the pre-deploy or deployment logs for the first Laravel error. [Railway logs](https://docs.railway.com/observability/logs)
+
 Failed jobs can be inspected with `php artisan queue:failed` and retried with `php artisan queue:retry <uuid>` after fixing the transport. Recover the database and upload bucket together to retain document references.
