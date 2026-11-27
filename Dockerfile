@@ -30,4 +30,9 @@ RUN printf '%s\n' 'Listen ${PORT}' > /etc/apache2/ports.conf \
     && a2enmod mpm_prefork \
     && apache2ctl configtest
 EXPOSE 8080
-CMD ["apache2-foreground"]
+# Normalize the MPM modules again in the running container before Apache loads them.
+CMD ["/bin/sh", "-ec", "\
+    rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.*; \
+    a2enmod mpm_prefork; \
+    apache2ctl configtest; \
+    exec apache2-foreground"]
