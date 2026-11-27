@@ -208,12 +208,11 @@ export function Settings({ kind, fields, values, photo, hiddenFields }: { kind: 
         setPreview(image ? crop(image, zoom, horizontal, vertical).toDataURL('image/webp') : null);
     }, [image, zoom, horizontal, vertical]);
 
-    async function submit(event: FormEvent) {
-        event.preventDefault();
-        if (file && !image) return;
+    async function save(includePhoto: boolean) {
+        if (includePhoto && file && !image) return;
         setEncoding(true);
         let upload: File | null = null;
-        if (image) {
+        if (includePhoto && image) {
             const canvas = crop(image, zoom, horizontal, vertical);
             const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/webp', 0.92));
             if (!blob) {
@@ -223,7 +222,7 @@ export function Settings({ kind, fields, values, photo, hiddenFields }: { kind: 
             }
             upload = new File([blob], blob.type === 'image/webp' ? 'profile.webp' : 'profile.png', { type: blob.type });
         }
-        form.transform(data => ({ ...data, ...draft, photo: upload }));
+        form.transform(data => ({ ...data, ...draft, photo: upload, remove_photo: includePhoto && data.remove_photo }));
         form.post('/admin/' + kind, {
             forceFormData: kind === 'profile',
             preserveScroll: true,
@@ -238,7 +237,11 @@ export function Settings({ kind, fields, values, photo, hiddenFields }: { kind: 
     }
 
     return <AdminLayout title={kind === 'profile' ? 'Profile' : 'Settings'}>
-        <section className="admin-panel settings-panel"><form onSubmit={event => void submit(event)}>
+        <section className="admin-panel settings-panel"><form onSubmit={event => {
+            event.preventDefault();
+            const submitter = (event.nativeEvent as SubmitEvent).submitter;
+            void save(submitter?.getAttribute('value') !== 'without-photo');
+        }}>
             {kind === 'profile' && <fieldset className="photo-field">
                 <legend>Profile photo</legend>
                 <div className="photo-preview">{preview || (photo && !form.data.remove_photo) ? <img src={preview || photo || ''} alt="Profile photo preview"/> : <Icon name="user"/>}</div>
@@ -278,6 +281,7 @@ export function Settings({ kind, fields, values, photo, hiddenFields }: { kind: 
             </fieldset>}
             <Errors errors={form.errors}/>
             <button className="button primary" disabled={form.processing || encoding || Boolean(file && !image)}>{form.processing || encoding ? 'Saving…' : 'Save changes'}</button>
+            {file && form.errors.photo && <button type="submit" value="without-photo" className="button secondary" disabled={form.processing || encoding}>Save without the new photo</button>}
         </form></section>
     </AdminLayout>;
 }

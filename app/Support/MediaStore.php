@@ -7,6 +7,8 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
+use League\Flysystem\UnableToWriteFile;
 use RuntimeException;
 use Throwable;
 
@@ -25,7 +27,7 @@ class MediaStore
             $path = 'portfolio/'.$uuid.'.webp';
             $mime = 'image/webp';
             $bytes = strlen($contents);
-            $saved = Storage::disk($disk)->put($path, $contents);
+            self::storeProfilePhoto($disk, $path, $contents);
         } else {
             $stream = fopen($file->getRealPath(), 'rb');
             try {
@@ -35,10 +37,9 @@ class MediaStore
                     fclose($stream);
                 }
             }
-        }
-
-        if (! $saved) {
-            throw new RuntimeException('The upload could not be stored.');
+            if (! $saved) {
+                throw new RuntimeException('The upload could not be stored.');
+            }
         }
 
         try {
@@ -62,6 +63,20 @@ class MediaStore
             } catch (Throwable $exception) {
                 report($exception);
             }
+        }
+    }
+
+    private static function storeProfilePhoto(string $disk, string $path, string $contents): void
+    {
+        try {
+            $saved = Storage::disk($disk)->put($path, $contents);
+        } catch (InvalidArgumentException|UnableToWriteFile $exception) {
+            report($exception);
+            $saved = false;
+        }
+
+        if (! $saved) {
+            throw ValidationException::withMessages(['photo' => 'The photo could not be uploaded. Try again or save without the new photo.']);
         }
     }
 

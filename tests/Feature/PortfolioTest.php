@@ -7,10 +7,12 @@ use App\Models\Inquiry;
 use App\Models\Media;
 use App\Models\PortfolioRecord;
 use App\Models\User;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Page;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 class PortfolioTest extends TestCase
@@ -105,6 +107,35 @@ class PortfolioTest extends TestCase
         $this->get('/admin/media/'.$file->public_id)->assertRedirect('/admin/login');
         $this->get('/')->assertInertia(fn (Page $page) => $page->where('profile.name', 'Portfolio Owner')
             ->missing('profile.email')->missing('profile.hidden_fields')->where('photo', '/images/'.$file->public_id));
+    }
+
+    public function test_profile_text_can_be_published_after_a_photo_upload_fails(): void
+    {
+        $workingDisk = Storage::fake('local');
+        $this->actingAs($this->owner())->post('/admin/profile', [
+            'name' => 'Original Profile',
+            'photo' => UploadedFile::fake()->image('original.jpg'),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $existingPhoto = Media::sole();
+        $failingDisk = $this->mock(FilesystemAdapter::class);
+        $failingDisk->shouldReceive('put')->once()->andThrow(new InvalidArgumentException('Missing S3 region'));
+        Storage::set('local', $failingDisk);
+
+        $this->from('/admin/profile')->post('/admin/profile', [
+            'name' => 'Updated Profile',
+            'photo' => UploadedFile::fake()->image('replacement.jpg'),
+        ])->assertRedirect('/admin/profile')->assertSessionHasErrors('photo');
+        $this->get('/')->assertInertia(fn (Page $page) => $page->where('profile.name', 'Original Profile'));
+        $this->assertSame($existingPhoto->id, Media::sole()->id);
+
+        $this->post('/admin/profile', ['name' => 'Updated Profile'])->assertRedirect()->assertSessionHasNoErrors();
+        Storage::set('local', $workingDisk);
+        auth()->logout();
+
+        $this->get('/')->assertInertia(fn (Page $page) => $page->where('profile.name', 'Updated Profile')
+            ->where('photo', '/images/'.$existingPhoto->public_id));
+        $workingDisk->assertExists($existingPhoto->path);
     }
 
     public function test_publishing_a_resume_makes_the_previous_file_private(): void

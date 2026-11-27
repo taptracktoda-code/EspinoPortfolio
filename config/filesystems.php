@@ -1,5 +1,9 @@
 <?php
 
+$s3Endpoint = env('AWS_ENDPOINT');
+$s3Host = parse_url((string) $s3Endpoint, PHP_URL_HOST);
+$defaultS3Region = is_string($s3Host) && str_ends_with(strtolower($s3Host), '.storageapi.dev') ? 'auto' : null;
+
 return [
 
     /*
@@ -51,13 +55,13 @@ return [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
+            'region' => env('AWS_DEFAULT_REGION') ?: $defaultS3Region,
             'bucket' => env('AWS_BUCKET'),
             'url' => env('AWS_URL'),
-            'endpoint' => env('AWS_ENDPOINT'),
+            'endpoint' => $s3Endpoint,
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
-            'report' => false,
+            'report' => true,
         ],
 
     ],
