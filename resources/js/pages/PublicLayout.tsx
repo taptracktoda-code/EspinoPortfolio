@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from '../Icons';
+import { usePortfolioRefresh } from '../portfolio-refresh';
 import type { PublicData } from '../types';
 
 interface InstallPrompt extends Event {
@@ -12,6 +13,7 @@ export function isOfflineSnapshot() {
 }
 
 export function PublicLayout({ site, profile, children }: PublicData & { children: ReactNode }) {
+    usePortfolioRefresh();
     const [open, setOpen] = useState(false);
     const [install, setInstall] = useState<InstallPrompt | null>(null);
     const [installHelp, setInstallHelp] = useState(false);

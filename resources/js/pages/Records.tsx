@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import { Icon } from '../Icons';
+import { notifyPortfolioChanged } from '../portfolio-refresh';
 import type { Fields, Item, PageLink, Values } from '../types';
 import { AdminLayout, Errors, Pagination } from './Admin';
 
@@ -35,7 +36,10 @@ function RecordEditor({ section, spec, item, categories, close }: { section: str
     function submit(event: FormEvent) {
         event.preventDefault();
         form.transform(data => ({ ...data, ...values }));
-        form.post('/admin/' + section + (item ? '/' + item.id : ''), { forceFormData: true, preserveScroll: true, onSuccess: close });
+        form.post('/admin/' + section + (item ? '/' + item.id : ''), { forceFormData: true, preserveScroll: true, onSuccess: () => {
+            notifyPortfolioChanged();
+            close();
+        } });
     }
     return <section className="admin-panel editor" aria-labelledby="record-editor">
         <div className="panel-heading"><h2 id="record-editor">{item ? 'Edit ' : 'Add '}{spec.item.toLowerCase()}</h2><button type="button" className="button secondary" onClick={close}>Cancel</button></div>
@@ -78,7 +82,7 @@ function CategoryManager({ categories }: { categories: Category[] }) {
         <form onSubmit={event => {
             event.preventDefault();
             setFailure('');
-            form.post(url, { preserveScroll: true, onSuccess: reset });
+            form.post(url, { preserveScroll: true, onSuccess: () => { notifyPortfolioChanged(); reset(); } });
         }}>
             <label>Category<select value={selected} onChange={event => {
                 const next = event.target.value;
@@ -152,7 +156,11 @@ export function Records({ section, spec, items, categories, savedCategories, pag
                     setDeleteBusy(true);
                     router.delete('/admin/' + section + '/' + deleting.id, {
                         preserveScroll: true,
-                        onSuccess: () => { if (editing === deleting) setEditing(null); setDeleting(null); },
+                        onSuccess: () => {
+                            notifyPortfolioChanged();
+                            if (editing === deleting) setEditing(null);
+                            setDeleting(null);
+                        },
                         onFinish: () => setDeleteBusy(false),
                     });
                 }}>{deleteBusy ? 'Deleting…' : 'Delete'}</button>
@@ -220,6 +228,7 @@ export function Settings({ kind, fields, values, photo, hiddenFields }: { kind: 
             forceFormData: kind === 'profile',
             preserveScroll: true,
             onSuccess: () => {
+                notifyPortfolioChanged();
                 setFile(null);
                 form.reset('photo', 'remove_photo');
                 if (fileInput.current) fileInput.current.value = '';
