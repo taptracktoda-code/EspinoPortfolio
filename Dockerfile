@@ -25,6 +25,9 @@ RUN printf '%s\n' 'Listen ${PORT}' > /etc/apache2/ports.conf \
     && cp deploy/php.ini "$PHP_INI_DIR/conf.d/portfolio.ini" \
     && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && composer dump-autoload --no-dev --optimize --no-interaction \
-    && chown -R www-data:www-data /app/storage /app/bootstrap/cache
+    && chown -R www-data:www-data /app/storage /app/bootstrap/cache \
+    && a2dismod mpm_event mpm_worker \
+    && a2enmod mpm_prefork \
+    && apache2ctl configtest
 EXPOSE 8080
 CMD ["apache2-foreground"]
